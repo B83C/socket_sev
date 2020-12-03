@@ -4,8 +4,9 @@
 #include <stdlib.h>
 
 #define MAX_PROTOCOL_LEN 4 //0.9 1.0 1.1 2
-#define MAX_HEADER_ENTRIES 20
+#define MAX_HEADER_ENTRIES 16
 #define MAX_PATH 100
+#define MAX_ENTRIES_NAME 40
 #define MAX_ENTRIES_VAL 260
 
 //Given that the collision rate is fairly low, I think this is okay.
@@ -25,8 +26,8 @@ struct http_header
     int32_t method; //4 bytes
     int32_t protocol_ver;//4 bytes
     char path[MAX_PATH]; //100 bytes
-    char h_names[MAX_HEADER_ENTRIES][MAX_ENTRIES_VAL]; //5200 bytes
-    char h_val[MAX_HEADER_ENTRIES][MAX_ENTRIES_VAL]; //5200 bytes
+    char h_names[MAX_HEADER_ENTRIES][MAX_ENTRIES_NAME]; //640 bytes
+    char h_val[MAX_HEADER_ENTRIES][MAX_ENTRIES_VAL]; //4160 bytes
 };
 
 int ParseHeader(char* header, int len, struct http_header* hh);

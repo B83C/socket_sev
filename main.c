@@ -29,12 +29,12 @@ char *response_headers = "HTTP/1.1 200 OK\r\n"
 "Content-Type: text/html; charset=UTF-8\r\n\r\n";
 int dirfd_;
 
-int handle(struct http_header* header, SOCKET* sock, )
+int handle(struct http_header* header, SOCKET* sock )
 {
     if(header->protocol_ver < 11)
     {
 	//backwards compatibility, meaning no persistent socket is supported
-	sprintf(response_header, "HTTP/%s %d\r\n\r\nHTTP Version Not Supported", header->protocol_ver, 505);
+	sprintf(response_header, "HTTP/%d %d\r\n\r\nHTTP Version Not Supported", header->protocol_ver, 505);
 	send(*sock, response_header, strlen(response_header), MSG_ZEROCOPY);
 	return -1;
     }
@@ -63,22 +63,6 @@ int main()
     SOCKET s, news;
     int fl;
     dirfd_ = open(HTML_HOME,  O_PATH);
-    #ifdef _WIN32
-    HANDLE t = CreateThread(NULL, 0, &Thread, NULL, 0, NULL);
-    WSADATA wsa;
-
-    if(WSAStartup(MAKEWORD(2,2), &wsa) != 0 )
-    {
-	printf("Failed. Error Code : %d\n", GetError());
-	goto CLEANUP;
-    }
-
-    if((s = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, NULL, NULL)) == INVALID_SOCKET)
-    {
-	printf("Couldn't create socket. Error Code : %d\n", GetError());
-	goto CLEANUP;
-    }
-    #else
     bzero((char*)&server, sizeof(server));
     s = socket(AF_INET, SOCK_STREAM, 0);
     if(s == -1)
@@ -88,7 +72,6 @@ int main()
     }
     //        fl = fcntl(s, F_GETFL);
     //        fcntl(s, F_SETFL, f1 | 0_NONBLOCK);
-    #endif
     //    char* sample = "GET /tutorials/other/top-20-mysql-best-practices/ HTTP/1.1\r\n"
     //"Host: net.tutsplus.com\r\n"
     //"User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)\r\n"
@@ -157,14 +140,7 @@ int main()
     printf("Unable to accept connection : %d\n", GetError());
 
 CLEANUP:
-    #ifdef _WIN32
-    CloseHandle(t);
-    closesocket(s);
-    closesocket(news);
-    WSACleanup();
-    #else
     close(s);
     close(news);
-    #endif // _WIN32
     return 0;
 }
