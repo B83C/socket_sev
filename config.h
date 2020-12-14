@@ -1,5 +1,5 @@
-#ifndef WRAPPER_H_INCLUDED
-#define WRAPPER_H_INCLUDED
+#ifndef CONFIG_H_INCLUDED
+#define CONFIG_H_INCLUDED
 
 #include<stdio.h>
 #include<sys/types.h>
@@ -17,16 +17,9 @@
 #include<unistd.h>
 #include<pthread.h>
 
-#define SOCKET_ERROR -1
-#define INVALID_SOCKET -1
-#define SOCKET int
-
 #ifndef O_PATH
 #define O_PATH 010000000
 #endif
-extern int errno;
-
-int GetError();
 
 #define PORT 8080
 #define MAX_BUFLEN 512
@@ -36,4 +29,4 @@ int GetError();
 
 #define MAX_THREADS 10
 
-#endif // WRAPPER_H_INCLUDED
+#endif 
