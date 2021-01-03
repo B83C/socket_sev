@@ -21,8 +21,8 @@
 #define O_PATH 010000000
 #endif
 
-#define PORT 8080
-#define MAX_BUFLEN 512
+#define PORT 12354
+#define MAX_BUFLEN 4096
 #define MAX_CACHE_FILE 15
 
 #define HTML_HOME "html"

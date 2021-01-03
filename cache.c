@@ -2,14 +2,8 @@
 
 char* RetrieveFile(char* name, int len, int dirfd)
 {
-    //FNV algorithm used here
-    int key_ = 2166136261;
     int low_acc = acc_count[0];
-    for(int d = 0; d < len; d++)
-    {
-	key_ ^= *(name + d);
-	key_ *= 16777619;
-    }
+    XXH64_hash_t key_ = XXH64(name, len, 0);
 
     int i = 0;
 
@@ -22,12 +16,14 @@ char* RetrieveFile(char* name, int len, int dirfd)
 
     int fd = openat(dirfd, name, O_RDONLY);
     if(fd == -1) {
+	fprintf(stderr, "Unable to retrieve file : %s, filename : %s\n", strerror(errno), name);
 	close(fd);
 	return -1;
     }
     void* ptr = mmap(NULL, sizeof(char), PROT_READ, MAP_PRIVATE, fd, 0);
     if(ptr == (void*)-1)
     {
+	fprintf(stderr, "Unable to memory map file : %s\n", strerror(errno));
 	close(fd);
 	return -1;
     }
