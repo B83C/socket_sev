@@ -15,10 +15,10 @@ int ParseHeader( char* header_, struct http_header* hh)
     register int32_t dummy1 asm("r10") = 0;
     register volatile int64_t ret = 0;//asm("rax");
     register int64_t rcx asm("rcx"); //for use of bsf instruction, if I can somehow make it not dependent on rcx it would be great
-    while(*header != ' ')
+    do
     {
-	hh->method += *header++;	
-    }
+	hh->method += *header++;
+    }while(*header != ' ');
     hh->path = ++header;
     /*
        register int i = 0;

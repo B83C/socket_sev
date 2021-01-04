@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-I. -pthread -masm=intel -O2 
+CFLAGS=-I. -masm=intel -O2 
+LFLAGS=-pthread
 SRCS:=$(wildcard *.c)
 OBJ_:=$(SRCS:%.c=obj/%.o)
 GPERF_=./gperf
@@ -10,7 +11,8 @@ $(OBJ_) : obj/%.o : %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
 
 output: $(OBJ_) headerhash.h 
-	$(CC) -I. -o ./bin/output $(OBJ_)
+	$(CC) -I. -o ./bin/output $(OBJ_) $(LFLAGS)
+
 
 run:
 	@cd bin && ./output && cd ..	
