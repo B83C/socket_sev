@@ -17,13 +17,13 @@
 #define OPTIONS 556
 #define TRACE 367
 
-struct http_header
+typedef struct http_header
 {
     int32_t method; //4 bytes
     int32_t protocol_ver;//4 bytes
     char* path;
     char* h_val[TOTAL_KEYWORDS]; 
-};
+} header_t;
 
 int ParseHeader(char* header, struct http_header* hh);
 #endif // PARSER_H_INCLUDED
