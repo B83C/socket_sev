@@ -24,8 +24,9 @@
 
 #define PORT 12354
 #define MAX_BUFLEN 4096
-#define MAX_SOCK 10
+#define MAX_CONN_PER_LISTENER 100
+#define MAX_EVENTS 1000
 
 #define HTML_HOME "html"
 
-#define MAX_THREADS 10
+#define LISTENING_THREADS 2

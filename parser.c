@@ -46,6 +46,9 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "movdqu xmm4, [ %[imm] ]"	"\t\n"
 	    "movdqu xmm3, [%[imm1]]"		"\t\n"
 	    "HEAD:		    "		"\t\n"
+	    "movzx ecx, BYTE PTR [%0]"		"\t\n"
+	    "cmp ecx, 0x0d"		"\t\n"
+	    "jbe END"		"\t\n"
 	    "movdqu xmm1, [ %0 ]"		"\t\n"
 	    "movdqu xmm2, xmm4"		"\t\n"
 	    "pcmpeqb xmm2, xmm1"		"\t\n"
@@ -59,13 +62,8 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "movdqu [ %0 ], xmm2"		"\t\n"
 	    "bsf ecx, %[dum1]"		"\t\n"
 	    "lea %0, [%0 + rcx + 2]"		"\t\n"
-	    "test %[firstend], %[firstend]"		"\t\n"
-	    "cmovz %[firstend], %0"		"\t\n"
-	    "movzx ecx, BYTE PTR [%0]"		"\t\n"
-	    "test ecx, ecx"		"\t\n"
-	    "jz END"		"\t\n"
-	    "cmp ecx, 0x0d"		"\t\n"
-	    "je END"		"\t\n"
+	  //  "test %[firstend], %[firstend]"		"\t\n"
+	  //  "cmovz %[firstend], %0"		"\t\n"
 	    "mov %[dum], %0"		"\t\n"
 	    "TOKENIZE:"		"\t\n"
 	    "movdqu xmm1, [ %0 ]"		"\t\n"
@@ -80,7 +78,7 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "lea %0, [%0 + rcx + 2]"		"\t\n"
 	    :"+r"(header),[dum1]"+r"(dummy1), [dum]"=r"(dummy), [firstend]"+r"(firstend)
 	    : "0"(header),[imm]"m"("\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r"), [imm1]"m"("::::::::::::::::")
-		  :"rcx", "rax", "rbx", "rdx", "rsi", "rdi"
+		  :"rcx"//, "rax", "rbx", "rdx", "rsi", "rdi"
 		   );
     ret = hdr_ind(dummy, header - dummy - 2);
     __asm__  (
@@ -92,7 +90,8 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    :[ret]"+r"(ret)
 	    :[header]"r"(header),[TABLE]"g"(table) 
 	    ); 
-    *(firstend - 11) = 0;
+   // *(firstend - 11) = 0;
+   //
     //    if(len <= 0) return 401;
     //    int Val = 1;
     //    for(int c = 0, i = 0, f = 0, l = 0;;)
