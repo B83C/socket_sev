@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include "headerhash.h"
 
-#define MAX_PROTOCOL_LEN 4 //0.9 1.0 1.1 2
-
 //Given that the collision rate is fairly low, I think this is okay.
 //Method values ( which is the sum of their ascii values )
 #define GET 224

@@ -1,5 +1,43 @@
 #include "parser.h"
 #include "headerhash.h"
+#define FIND_NEXT_LIKELY(x, y) { \
+	    __asm__ ( \
+	    "movdqu xmm1, [ %[imm] ]"	"\t\n"\
+	    "1:"		"\t\n"\
+	    "movdqu xmm2, [%0]"		"\t\n"\
+	    "pcmpeqb xmm2, xmm1"		"\t\n"\
+	    "ptest xmm2, xmm2"		"\t\n"\
+	    "jnz 1f"		"\t\n"\
+	    "add %0, 16"		"\t\n"\
+	    "jmp 1b"	"\t\n"\
+	    "1:"		"\t\n"\
+	    "pmovmskb rcx, xmm2"	"\t\n"\
+	    "bsf rcx, rcx"	"\t\n"\
+	    "lea %0, [ %0 + rcx + 1]"	"\t\n"\
+	    :"+r"(y)\
+	    :[imm]"r"(x x x x x x x x x x x x x x x x)\
+	    :"rcx"  \
+	    );\
+	}
+#define FIND_NEXT_UNLIKELY(x, y) { \
+	    __asm__ ( \
+	    "movdqu xmm1, [ %[imm] ]"	"\t\n"\
+	    "jmp 2f"	"\t\n"\
+	    "1:"		"\t\n"\
+	    "add %0, 16"		"\t\n"\
+	    "2:"		"\t\n"\
+	    "movdqu xmm2, [%0]"		"\t\n"\
+	    "pcmpeqb xmm2, xmm1"		"\t\n"\
+	    "ptest xmm2, xmm2"		"\t\n"\
+	    "jz 1b"		"\t\n"\
+	    "pmovmskb rcx, xmm2"	"\t\n"\
+	    "bsf rcx, rcx"	"\t\n"\
+	    "lea %0, [ %0 + rcx + 1]"	"\t\n"\
+	    :"+r"(y)\
+	    :[imm]"r"(x x x x x x x x x x x x x x x x)\
+	    :"rcx"  \
+	    );\
+	}
 
 //TODO: Extract more performance out of it, and my hand-written piece of asm is a bit unoptimized
 //
@@ -11,15 +49,13 @@ int ParseHeader( char* header_, struct http_header* hh)
     register char** table = hh->h_val; //Goddamn double pointer! It causes a bug when passed to GNU inline asm. ( Note: never pass double pointer to an inline asm statement or you will be getting weird errors! To clarify why it is fatal, passing it to the input section of an inline asm causes gnu asm to think that it is accessed only once, so it will advance the pointer by some values , which is error prone to loop execution
     register char* header asm("r11")= header_;
     register char* dummy asm("r9") = header_;
-    register char* firstend = 0;
     register int32_t dummy1 asm("r10") = 0;
     register volatile int64_t ret = 0;//asm("rax");
     register int64_t rcx asm("rcx"); //for use of bsf instruction, if I can somehow make it not dependent on rcx it would be great
-    do
-    {
-	hh->method += *header++;
-    }while(*header != ' ');
-    hh->path = ++header;
+    FIND_NEXT_LIKELY(" ", header);
+    hh->path = header;
+    FIND_NEXT_LIKELY(" ", header);
+    *(header - 1) = 0;
     /*
        register int i = 0;
        for(i = 0; i < len; i++){
@@ -62,8 +98,6 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "movdqu [ %0 ], xmm2"		"\t\n"
 	    "bsf ecx, %[dum1]"		"\t\n"
 	    "lea %0, [%0 + rcx + 2]"		"\t\n"
-	  //  "test %[firstend], %[firstend]"		"\t\n"
-	  //  "cmovz %[firstend], %0"		"\t\n"
 	    "mov %[dum], %0"		"\t\n"
 	    "TOKENIZE:"		"\t\n"
 	    "movdqu xmm1, [ %0 ]"		"\t\n"
@@ -76,7 +110,7 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "pmovmskb %[dum1], xmm1"	"\t\n"
 	    "bsf ecx, %[dum1]"		"\t\n"
 	    "lea %0, [%0 + rcx + 2]"		"\t\n"
-	    :"+r"(header),[dum1]"+r"(dummy1), [dum]"=r"(dummy), [firstend]"+r"(firstend)
+	    :"+r"(header),[dum1]"+r"(dummy1), [dum]"=r"(dummy)
 	    : "0"(header),[imm]"m"("\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r"), [imm1]"m"("::::::::::::::::")
 		  :"rcx"//, "rax", "rbx", "rdx", "rsi", "rdi"
 		   );
@@ -90,7 +124,6 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    :[ret]"+r"(ret)
 	    :[header]"r"(header),[TABLE]"g"(table) 
 	    ); 
-   // *(firstend - 11) = 0;
    //
     //    if(len <= 0) return 401;
     //    int Val = 1;
