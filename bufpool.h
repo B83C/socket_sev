@@ -15,5 +15,6 @@ struct cmem{
     char* alloc_mem()
     {
 
-    }    *
+    }
+    *
     /

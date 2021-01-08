@@ -16,7 +16,7 @@ char* RetrieveFile(char* name, int len, int dirfd)
 
     int fd = openat(dirfd, name, O_RDONLY);
     if(fd == -1) {
-	fprintf(stderr, "Unable to retrieve file : %s, filename : %s\n", strerror(errno), name);
+//	fprintf(stderr, "Unable to retrieve file : %s, filename : %s\n", strerror(errno), name);
 	close(fd);
 	return -1;
     }

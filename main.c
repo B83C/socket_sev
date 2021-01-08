@@ -19,29 +19,42 @@
 #include "parser.h"
 #include "headerhash.h"
 #define ALWAYS_INLINE inline __attribute__((always_inline))
+#define CONN_FD(x) (((struct conn_t*)x.data.ptr)->fd)
+#define CONN_BUF(x) (((struct conn_t*)x.data.ptr)->buf)
+#define CONN_HEAD(x) (&((struct conn_t*)x.data.ptr)->header)
+#define SHUTDOWN_CONN(x)	    \
+{	    \
+    free(x.data.ptr); \
+    shutdown(CONN_FD(x), SHUT_RDWR);	    \
+    close(CONN_FD(x));	    \
+}	    
 
-char *response_headers = "HTTP/1.1 200 OK\r\n"
-"Content-Type: text/html; charset=UTF-8\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=10\r\nContent-Length: 50\r\n\r\n<html><script src=\"test.js\"></script><body>fasdfkja;sdlkjaf;sdfkjasdfkadfha;ssdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;laknj;falnj;falsdfj;alkj;asdfkja;sdlkjsdfj;lak</body></html>";
+#define STRa(x) #x
+#define STR(x) STRa(x)
+
+#define HTML_404 "<html><body>CAN'T FIND THE FILE FOR YOU</body></html>"
+#define HTML_LEN_404 35
+
+#define HTML_413 "<html><body>WHAT IS WRONG WITH YOU</body></html>"
+#define HTML_LEN_413 48
+
+#define ERROR(x) "HTTP/1.1 " #x " \r\nConnection: close\r\nContent-Length: " STR(HTML_LEN_ ## x) "\r\n\r\n" HTML_ ## x 
+#define ERROR_LEN(x) __builtin_strlen(ERROR(x))
+
+#define HTTP_OK "HTTP/1.1 200 OK\r\n" "Content-Type: text/html; charset=UTF-8\r\nConnection: Keep-Alive\r\nKeep-Alive: timeout=" STR(KEEPALIVE_TIMEOUT) "\r\nContent-Length: %d\r\n\r\n%s"
+
+#define DIE_WITH_ERROR(x, y)  send( CONN_FD(x) , ERROR(y), ERROR_LEN(y), 0) 
 int dirfd_;
 
-enum CON_MODE { READ, WRITE, IDLE };
 
-struct conn_t
+struct conn_t 
 {
     header_t header;
-    char* buf;
-    enum CON_MODE mode;
+    char buf[MAX_BUFLEN];
     int fd;
-};
+}__attribute__((aligned(16)));
 
-
-void ALWAYS_INLINE shutdown_conn(int fd)
-{
-    shutdown(fd, SHUT_RDWR);
-    close(fd);
-}
-
-int listeners[LISTENING_THREADS]; 
+int64_t listeners[LISTENING_THREADS]; 
 
 void* siginthandler(int dummy __attribute__((unused)))
 {
@@ -79,11 +92,14 @@ void worker_proc(void* listener)
     }
     int new_sock;
     struct epoll_event events[MAX_EVENTS];
+    struct conn_t* connection;
     struct epoll_event ev = {.data.fd = (int)listener, .events = EPOLLIN | EPOLLET};
     epoll_ctl(epollfd, EPOLL_CTL_ADD, (int)listener, &ev); 
     //ev.events |= EPOLLONESHOT;
+    struct sockaddr_in client;
+    size_t recvlength;
+    int clen = sizeof(struct sockaddr_in);
     char tmp[5000];
-    char RecvBuf[MAX_BUFLEN] = {0};
     while(1)
     {
 	int pending_num = epoll_wait(epollfd, events, MAX_EVENTS, -1);
@@ -96,13 +112,13 @@ void worker_proc(void* listener)
 	{
 	    if(events[i].data.fd == (int)listener)
 	    {
-		struct sockaddr_in client;
-		int clen = sizeof(struct sockaddr_in);
 ACCEPTMORE:
 		new_sock = accept4(events[i].data.fd,(struct sockaddr*)&client, &clen, SOCK_NONBLOCK);
 		if(new_sock != -1)
 		{
-		    ev.data.fd = new_sock; 
+		    connection = malloc(sizeof(struct conn_t));
+		    connection->fd = new_sock;
+		    ev.data.ptr = connection; 
 		    if(epoll_ctl(epollfd, EPOLL_CTL_ADD, new_sock, &ev) == -1)
 		    {
 			fprintf(stderr, "Unable to add socket to interest list : %s", strerror(errno));
@@ -111,40 +127,48 @@ ACCEPTMORE:
 		}
 		continue;
 	    }
-	    if(events[i].events & ( EPOLLRDHUP | EPOLLRDHUP | EPOLLERR))
+	    if(events[i].events & ( EPOLLRDHUP | EPOLLHUP | EPOLLERR))
 	    {
-		shutdown(events[i].data.fd, SHUT_RDWR);
-		close(events[i].data.fd);
-		epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
-	//	printf("Connection closing for %d\n" , events[i].data.fd);
+		SHUTDOWN_CONN(events[i]);
+		epoll_ctl(epollfd, EPOLL_CTL_DEL, CONN_FD(events[i]), NULL);
+		//printf("Connection closing for %d\n" , CONN_FD(events[i]));
 		continue;
 	    }
-	    //printf("Got a new client %d\n", events[i].data.fd);
-	    int iResult;
-	    header_t test;
-	    int length;
-	    ioctl(events[i].data.fd, SIOCINQ, &length);
-	    char* buffer = malloc(length);
-	    if(buffer == NULL)
+	    ioctl(CONN_FD(events[i]), SIOCINQ, &recvlength);
+	    if(recvlength > MAX_BUFLEN)
 	    {
-		printf("Error allocating memory \n");
+		DIE_WITH_ERROR(events[i], 413);
 	    }
-	    iResult= recv(events[i].data.fd, buffer, &length, 0);
-	    //printf("BUF : %s\n", buffer);
-	    //printf("LENGTH : %d\n", length);
-	    //if(!(iResult < MAX_BUFLEN || errno == EAGAIN)) goto READ;
-	    char* temp = RetrieveFile("test.html", 9, dirfd_);
-	    sprintf(tmp, "%s%s", response_headers, temp);
-	    send(events[i].data.fd, tmp, strlen(tmp), 0);
-	    ParseHeader(buffer, &test);
+	    else if(recvlength > 0)
+	    {
+		int iResult= recv(CONN_FD(events[i]), CONN_BUF(events[i]), &recvlength, 0);
+		ParseHeader(CONN_BUF(events[i]), CONN_HEAD(events[i]));
+		char* temp = RetrieveFile(CONN_HEAD(events[i])->path, strlen(CONN_HEAD(events[i])->path), dirfd_);
+		if(temp == -1 )
+		{
+		    DIE_WITH_ERROR(events[i], 404);
+		}
+		else
+		{
+		    sprintf(tmp, HTTP_OK, strlen(temp), temp);
+		    send(CONN_FD(events[i]), tmp, strlen(tmp), 0);
+		}
+	    }
+	    else
+	    {
+		SHUTDOWN_CONN(events[i]);
+		epoll_ctl(epollfd, EPOLL_CTL_DEL, CONN_FD(events[i]), NULL);
+		//printf("Connection closing for %d\n" , CONN_FD(events[i]));
+		continue;
+	    }
 	    //events[i].events |= EPOLLONESHOT;
 	    //if(epoll_ctl(epollfd, EPOLL_CTL_MOD, events[i].data.fd, &events[i]) == -1)
 	    //{
 	    //    fprintf(stderr, "Unable to del socket from interest list : %s", strerror(errno));
 	    //} 
-//	    shutdown(events[i].data.fd, SHUT_RDWR);
-//	    close(events[i].data.fd);
-//	    epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
+	    //	    shutdown(events[i].data.fd, SHUT_RDWR);
+	    //	    close(events[i].data.fd);
+	    //	    epoll_ctl(epollfd, EPOLL_CTL_DEL, events[i].data.fd, NULL);
 	}
     }
 
@@ -177,6 +201,11 @@ int main()
 	setsockopt(listeners[i], SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
 	setsockopt(listeners[i], SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
 	setsockopt(listeners[i], SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
+		    val = 1;
+	//	    setsockopt(listeners[i], IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val));
+	//	    setsockopt(listeners[i], IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val));
+	//	    setsockopt(listeners[i], IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val));
+	//	    setsockopt(listeners[i], IPPROTO_TCP, TCP_USER_TIMEOUT, &val, sizeof(val));
 	//setsockopt(listener[i], SOL_SOCKET, SO_REUSEADDR, 1, sizeof(int));
 	if(bind(listeners[i], (struct sockaddr*)&sock_opt, sizeof(sock_opt)) == -1)
 	{

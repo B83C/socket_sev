@@ -39,23 +39,29 @@
 	    );\
 	}
 
+//Issue: TOO MANY COMPARISONS IN THE MAIN LOOP!!!
 //TODO: Extract more performance out of it, and my hand-written piece of asm is a bit unoptimized
 //
 //FULL SPEED AHEAD!!! currently I have only optimized for CPUs having SSE instructions
 //Arm neon SIMD is to be added asap
 int ParseHeader( char* header_, struct http_header* hh)
 {
-    //printf("%s \n\n", header_);
     register char** table = hh->h_val; //Goddamn double pointer! It causes a bug when passed to GNU inline asm. ( Note: never pass double pointer to an inline asm statement or you will be getting weird errors! To clarify why it is fatal, passing it to the input section of an inline asm causes gnu asm to think that it is accessed only once, so it will advance the pointer by some values , which is error prone to loop execution
     register char* header asm("r11")= header_;
     register char* dummy asm("r9") = header_;
     register int32_t dummy1 asm("r10") = 0;
     register volatile int64_t ret = 0;//asm("rax");
     register int64_t rcx asm("rcx"); //for use of bsf instruction, if I can somehow make it not dependent on rcx it would be great
-    FIND_NEXT_LIKELY(" ", header);
+//    printf("%s\n", header_);
+    do
+    {
+	hh->method += *header++;
+    }while(*header != ' ');
+    header += 2;
     hh->path = header;
     FIND_NEXT_LIKELY(" ", header);
     *(header - 1) = 0;
+//	    printf("HEADERBUF : %s\n", header );
     /*
        register int i = 0;
        for(i = 0; i < len; i++){
@@ -98,6 +104,9 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "movdqu [ %0 ], xmm2"		"\t\n"
 	    "bsf ecx, %[dum1]"		"\t\n"
 	    "lea %0, [%0 + rcx + 2]"		"\t\n"
+	    "movzx ecx, BYTE PTR [%0]"		"\t\n"
+	    "cmp ecx, 0x0d"		"\t\n"
+	    "jbe END"		"\t\n"
 	    "mov %[dum], %0"		"\t\n"
 	    "TOKENIZE:"		"\t\n"
 	    "movdqu xmm1, [ %0 ]"		"\t\n"
