@@ -48,20 +48,17 @@ int ParseHeader( char* header_, struct http_header* hh)
 {
     register char** table = hh->h_val; //Goddamn double pointer! It causes a bug when passed to GNU inline asm. ( Note: never pass double pointer to an inline asm statement or you will be getting weird errors! To clarify why it is fatal, passing it to the input section of an inline asm causes gnu asm to think that it is accessed only once, so it will advance the pointer by some values , which is error prone to loop execution
     register char* header asm("r11")= header_;
-    register char* dummy asm("r9") = header_;
-    register int32_t dummy1 asm("r10") = 0;
+    register int64_t dummy asm("r9") = 0;
+    register int64_t dummy1 asm("r10") = 0;
     register volatile int64_t ret = 0;//asm("rax");
     register int64_t rcx asm("rcx"); //for use of bsf instruction, if I can somehow make it not dependent on rcx it would be great
-//    printf("%s\n", header_);
     do
     {
-	hh->method += *header++;
-    }while(*header != ' ');
-    header += 2;
-    hh->path = header;
+	hh->method += *header;
+    }while(*header++ != ' ');
+    hh->path = ++header;
     FIND_NEXT_LIKELY(" ", header);
     *(header - 1) = 0;
-//	    printf("HEADERBUF : %s\n", header );
     /*
        register int i = 0;
        for(i = 0; i < len; i++){
@@ -88,50 +85,49 @@ int ParseHeader( char* header_, struct http_header* hh)
 	    "movdqu xmm4, [ %[imm] ]"	"\t\n"
 	    "movdqu xmm3, [%[imm1]]"		"\t\n"
 	    "HEAD:		    "		"\t\n"
-	    "movzx ecx, BYTE PTR [%0]"		"\t\n"
-	    "cmp ecx, 0x0d"		"\t\n"
-	    "jbe END"		"\t\n"
+	  //  "movzx ecx, BYTE PTR [%0]"		"\t\n"
+	  //  "cmp ecx, 0x0d"		"\t\n"
+	  //  "jbe END"		"\t\n"
 	    "movdqu xmm1, [ %0 ]"		"\t\n"
-	    "movdqu xmm2, xmm4"		"\t\n"
+	    "movdqa xmm2, xmm4"		"\t\n"
 	    "pcmpeqb xmm2, xmm1"		"\t\n"
 	    "ptest xmm2, xmm2"		"\t\n"
 	    "jnz SKIPADD"		"\t\n"
 	    "add %0, 16"		"\t\n"
 	    "jmp HEAD"		"\t\n"
 	    "SKIPADD:"		"\t\n"
-	    "pmovmskb %[dum1], xmm2"	"\t\n"
+	    "pmovmskb %k[dum1], xmm2"	"\t\n"
 	    "pandn xmm2, xmm1"		"\t\n"
 	    "movdqu [ %0 ], xmm2"		"\t\n"
-	    "bsf ecx, %[dum1]"		"\t\n"
-	    "lea %0, [%0 + rcx + 2]"		"\t\n"
-	    "movzx ecx, BYTE PTR [%0]"		"\t\n"
-	    "cmp ecx, 0x0d"		"\t\n"
+	    "bsf %k[dum1], %k[dum1]"		"\t\n"
+	    "lea %0, [%0 + %[dum1] + 2]"		"\t\n"
+	    "cmp BYTE PTR [%0], 0x0d"		"\t\n"
 	    "jbe END"		"\t\n"
-	    "mov %[dum], %0"		"\t\n"
+	    "xor %k[dum], %k[dum]"		"\t\n"
 	    "TOKENIZE:"		"\t\n"
-	    "movdqu xmm1, [ %0 ]"		"\t\n"
+	    "movdqu xmm1, [ %0 + %[dum] ]"		"\t\n"
 	    "pcmpeqb xmm1, xmm3"		"\t\n"
 	    "ptest xmm1, xmm1"		"\t\n"
 	    "jnz FOUND "		"\t\n"
-	    "add %0, 16"		"\t\n"
+	    "add %[dum], 16"		"\t\n"
 	    "jmp TOKENIZE"		"\t\n"
 	    "FOUND:"		"\t\n"
-	    "pmovmskb %[dum1], xmm1"	"\t\n"
-	    "bsf ecx, %[dum1]"		"\t\n"
-	    "lea %0, [%0 + rcx + 2]"		"\t\n"
+	    "pmovmskb %k[dum1], xmm1"	"\t\n"
+	    "bsf %k[dum1], %k[dum1]"		"\t\n"
+	    "add %[dum],  %[dum1]"		"\t\n"
 	    :"+r"(header),[dum1]"+r"(dummy1), [dum]"=r"(dummy)
 	    : "0"(header),[imm]"m"("\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r"), [imm1]"m"("::::::::::::::::")
-		  :"rcx"//, "rax", "rbx", "rdx", "rsi", "rdi"
 		   );
-    ret = hdr_ind(dummy, header - dummy - 2);
+    ret = hdr_ind(header, dummy);
     __asm__  (
+	    "lea %[header], [%[header] + %[dum] + 2]"		"\t\n"
 	    "test %[ret], -1"		"\t\n"
 	    "js HEAD"		"\t\n"
 	    "mov [%[TABLE] + %[ret]*8], %[header]"		"\t\n"
 	    "jmp HEAD"		"\t\n"
 	    "END:"		"\t\n"
-	    :[ret]"+r"(ret)
-	    :[header]"r"(header),[TABLE]"g"(table) 
+	    :[header]"+r"(header), [ret]"+r"(ret), [dum]"=r"(dummy)
+	    :"0"(header),[TABLE]"g"(table) 
 	    ); 
    //
     //    if(len <= 0) return 401;
