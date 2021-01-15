@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+	<title>Admin Page</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+	<body style="background-color: #DBDAD8;">
+	
+	
+	<div class="w3-sidebar w3-bar-block w3-card w3-animate-left" style="display:none; background-color: #26262E;" id="mySidebar">
+	  <button  class="w3-bar-item w3-button w3-large"
+	  onclick="w3_close()" style="color: white;">Close &times;</button>
+	  <a href="#Overview" class="w3-bar-item w3-button" style="color: white;">Overview</a>
+	  <a href="#Trends" class="w3-bar-item w3-button" style="color: white;" >Trends</a>
+	  <a href="#" class="w3-bar-item w3-button" style="color: white;" id="settings">Settings</a>
+	</div>
+	
+	<div id="main">
+	
+	<div  class="w3-teal w3-dark-grey">
+	  <button  id="openNav" class="w3-button w3-teal w3-xlarge  w3-dark-grey" onclick="w3_open()">&#9776;</button>
+	  <div  class="w3-container">
+		<h1 style="color: #26262E;">Admin Page</h1>
+	  </div>
+	</div>
+	
+	
+	</div>
+	
+	<script src="javascript/script(adminpage).js">
+	
+	</script>
+<head>
+
+<!-------------------------------------------------------------for interactive graph------------------------------------------------------------>
+
+<link rel="stylesheet" href="css/graph.css">
+<meta name="robots" content="noindex,follow" />
+</head>
+
+<body>
+
+<div class="split left">
+	<h1 style=" font-size: 50px; left: 300px; position: absolute; top: 100px; font-family: sans-serif;color: #333333; " id="Trends" > Trends</h1>
+	<div id="graph-wrapper">
+		<div class="graph-info">
+			<a href="javascript:void(0)" class="visitors">Guest</a>
+			<a href="javascript:void(0)" class="returning">Teachers</a>
+	
+			<a href="#" id="bars"><span></span></a>
+			<a href="#" id="lines" class="active"><span></span></a>
+		</div>
+	
+		<div class="graph-container">
+			<div id="graph-lines"></div>
+			<div id="graph-bars"></div>
+		</div>
+	</div>
+</div>
+
+
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+<script src="javascript/jquery.flot.min.js"></script>
+<script src="javascript/script(adminpage).js">
+
+</script>
+
+
+
+<!-----------------------------------------------------------for overviews------------------------------------------------------------------------>
+
+<div class = "split right">
+	<h1 style=" font-size: 50px; left: 300px; position: absolute; top: 100px; font-family: sans-serif; color: #333333;" id="Overview"> Overview</h1>
+
+
+<input style="width: 600px; left: 100px; position: absolute; top: 200px;" type="text" id="myInput" onkeyup="myFunction()" placeholder="Search for names.." title="Type in a name">
+
+<table style="width: 600px; left: 100px; position: absolute; top: 300px;" id="myTable">
+  <tr class="header">
+    <th style="width:200px;">Name</th>
+	<th style="width:150px;">Carplate number</th>
+	<th style="width:150px;">Enter time</th>
+  </tr>
+  <tr>
+    <td>Teacher 1</td>
+	<td>TSC248</td>
+	<td>9:03am</td>
+  </tr>
+  <tr>
+    <td>Guest 1</td>
+	<td>WAS1</td>
+	<td>7:32am</td>
+  </tr>
+  <tr>
+    <td>Teacher 2</td>
+	<td>BM2S12</td>
+	<td>7:45am</td>
+  </tr>
+  <tr>
+    <td>Teacher 3</td>
+	<td>WTF5317</td>
+	<td>6:52am</td>
+  </tr>
+  <tr>
+    <td>Teacher 4</td>
+	<td>NAV21</td>
+	<td>8:28am</td>
+  </tr>
+  <tr>
+    <td>Teacher 5</td>
+	<td>UF1353</td>
+	<td>10:03am</td>
+  </tr>
+  <tr>
+    <td>Teacher 6</td>
+	<td>B345C3</td>
+	<td>8:37am</td>
+  </tr>
+  <tr>
+    <td>Guest 2</td>
+	<td>WUF321</td>
+	<td>7:13am</td>
+  </tr>
+</table>
+
+</div>
+
+
+<!------------------------------------------------------------for user settings---------------------------------------------------------------->
+
+<style >
+	body {font-family: Arial, Helvetica, sans-serif;}
+	
+	/* The Modal (background) */
+	.modal {
+	  display: none; /* Hidden by default */
+	  position: fixed; /* Stay in place */
+	  z-index: 1; /* Sit on top */
+	  padding-top: 100px; /* Location of the box */
+	  left:0;
+	  top: 0;
+	  width: 100%; /* Full width */
+	  height: 100%; /* Full height */
+	  overflow: auto; /* Enable scroll if needed */
+	  background-color: rgb(0,0,1); /* Fallback color */
+	  background-color: rgba(255,255,255,0.5); /* Black w/ opacity */
+	}
+	
+	/* Modal Content */
+	.modal-content {
+	  position: absolute;
+	  top: 100px;
+	  left: 550px;
+	  background-color: #2F2F37;
+	  color: #F65614;
+	  margin: auto;
+	  padding: 50px;
+	  width: 400px;
+	  height: 500px;
+	}
+	
+	/* The Close Button */
+	.close {
+	  color: #aaaaaa;
+	  float: right;
+	  font-size: 28px;
+	  font-weight: bold;
+	}
+	
+	.close:hover,
+	.close:focus {
+	  color: #5e7783;
+	  text-decoration: none;
+	  cursor: pointer;
+	}
+
+	.button {
+  position: absolute;
+  top: 250px;
+  left: 153px;
+  font: bold 11px Arial;
+  text-align: center;
+  text-decoration: none;
+  background-color: #E5E5E5;
+  color: #F65614;
+  padding: 10px 15px 10px 15px;
+  border-top: 1px solid #CCCCCC;
+  border-right: 1px solid #333333;
+  border-bottom: 1px solid #333333;
+  border-left: 1px solid #CCCCCC;
+}
+.button2 {
+  position: absolute;
+  top: 200px;
+  left: 160px;
+  font: bold 11px Arial;
+  text-align: center;
+  text-decoration: none;
+  background-color: #E5E5E5;
+  color: #F65614;
+  padding: 10px 15px 10px 15px;
+  border-top: 1px solid #CCCCCC;
+  border-right: 1px solid #333333;
+  border-bottom: 1px solid #333333;
+  border-left: 1px solid #CCCCCC;
+}
+	</style>
+
+
+<div id="myModal" class="modal">
+
+	<!-- Modal content -->
+	<div class="modal-content">
+	  <div class="modal-header">
+		<span class="close">&times;</span>
+		<h2 style="font-size: 60px; text-align: center; color: #F65614;">ADMIN</h2>
+	  </div>
+	  <div class="modal-body">
+		<a href="login.html" class="button">LOG OUT</a>
+
+	  </div>
+	  <div class="modal-body">
+		<a href="homepage.html" class="button2">HOME</a>
+
+	  </div>
+	</div>
+  
+  </div>
+  <script src="javascript/script(adminpage).js"></script>
+
+
+</body>
+
+</html>
