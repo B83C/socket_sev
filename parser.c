@@ -211,3 +211,69 @@ int ParseHeader( char* header_, struct http_header* hh)
     //	}
     //    }
 }
+
+char* base64_encode(char* str_, size_t len)
+{
+    const char magicval[16] __attribute__((aligned(16)))={
+        0x01,0x00,0x02,0x01,
+        0x04,0x03,0x05,0x04,
+        0x07,0x06,0x08,0x07,
+        0x0a,0x09,0x0b,0x0a,
+    } ; 
+    
+    const int8_t lookup[16] __attribute__((aligned(16)))={
+	71, -4, -4, -4,
+	-4, -4, -4, -4,
+	-4, -4, -4, '+'- 62,
+	'\\' - 63, 65, 0, 0,
+    } ; 
+
+    __uint128_t const1 = *(__uint128_t*)"\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33\x33";
+    __uint128_t const2 = *(__uint128_t*)"\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19\x19";
+    __uint128_t const3 = *(__uint128_t*)"\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D\x0D";
+
+    register int32_t dummy= 0xfc0fc00;
+    register int32_t dummy1= 0x4000040;
+    register int64_t len = strlen(str_);
+    register char* str = str_ + len;
+
+    const int sz = (len/3)*4;
+    char* encoded = aligned_alloc(16, sz);
+    __asm__(
+	    "neg %[size]" "\n"
+	    "movd xmm0, %[dum]" "\n"
+	    "pshufd xmm3, xmm0, 0" "\n"
+	    "movdqa xmm4, xmm3" "\n"
+	    "psrld xmm4, 6" "\n"
+	    "movd xmm0, %[dum1]" "\n"
+	    "pshufd xmm5, xmm0, 0" "\n"
+	    "movdqa xmm6, xmm5" "\n"
+	    "psrld xmm6, 2" "\n"
+	    "movdqa xmm7, [%[lookup]]" "\n"
+	    "1:" "\n"
+	    "movdqu xmm0, [%[str] + %[size]]" "\n"
+	    "pshufb xmm0, [%[magicval]]" "\n"
+	    "movdqa xmm1, xmm0" "\n"
+	    "pand xmm0, xmm3" "\n"
+	    "pand xmm1, xmm4" "\n"
+	    "pmulhw xmm0, xmm5" "\n"
+	    "pmullw xmm1, xmm6" "\n"
+	    "por xmm0, xmm1" "\n"
+	    "movdqa xmm1, xmm0" "\n"
+	    "movdqa xmm2, xmm0" "\n"
+	    "psubusb xmm1, [%[c1]]" "\n"
+	    "pcmpgtb xmm2, [%[c2]]" "\n"
+	    "pandn xmm2, [%[c3]]" "\n"
+	    "por xmm1, xmm2" "\n"
+	    "movdqa xmm2, xmm7" "\n"
+	    "pshufb xmm2, xmm1" "\n"
+	    "paddb xmm0, xmm2" "\n"
+	    "movdqa [%[encoded]], xmm0" "\n"
+	    "add %[encoded], 0x10" "\n"
+	    "add %[size], 12" "\n"
+	    "js 1b" "\n"
+	    :[size]"+r"(size)
+	    :[magicval]"m"(magicval), [str]"r"(str), [dum]"r"(dummy), [dum1]"r"(dummy1), [encoded]"r"(encoded), [lookup]"r"(lookup), [c1]"m"(const1), [c2]"m"(const2), [c3]"m"(const3)
+	      );
+    return encoded;
+}

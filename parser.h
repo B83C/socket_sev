@@ -17,11 +17,12 @@
 
 typedef struct http_header
 {
-    int32_t method; //4 bytes
-    int32_t protocol_ver;//4 bytes
     char* path;
     char* h_val[TOTAL_KEYWORDS]; 
+    int32_t method; //4 bytes
+    int32_t protocol_ver;//4 bytes
 } header_t;
 
 int ParseHeader(char* header, struct http_header* hh);
+char* base64_encode(char*, size_t);
 #endif // PARSER_H_INCLUDED
